@@ -48,6 +48,12 @@ def read_CSV(path):
         # Add Lap_Time columns
         df_lap_markers = pd.DataFrame(df_lap_markers)
         df_lap_markers['Lap_Time'] = df_lap_markers.Time - df_lap_markers.Time.shift(1)
+        df_lap_markers['Lap_Time_Avg'] = df_lap_markers['Lap_Time'].ewm(alpha=0.2).mean()
+
+        # plt.plot(df_lap_markers['Lap_Time'], label='normal')
+        # plt.plot(df_lap_markers['Lap_Time_Avg'], label='ewm mean')
+        # plt.legend()
+        # plt.show()
 
         # calc columns means
         init_idx = 0
@@ -58,8 +64,8 @@ def read_CSV(path):
 
         # Drop first row
         df_lap_markers = df_lap_markers.iloc[1:]
-        # Drop first column
-        df.drop('Time', inplace=True, axis=1)
+        # drop Lap_Time column
+        df_lap_markers.drop('Lap_Time', inplace=True, axis=1)
 
         return df_lap_markers
     else:

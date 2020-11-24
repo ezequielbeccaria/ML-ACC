@@ -142,7 +142,7 @@ def test(dataset, epoch, predictor):
 
 
 if __name__ == '__main__':
-    run_id = '05'
+    run_id = '06'
     run_path = '/home/ezequiel/experiments/ML-ACC/'+run_id+'/'
 
     if not os.path.isdir(run_path):
