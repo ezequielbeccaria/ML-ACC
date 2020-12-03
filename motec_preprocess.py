@@ -1,3 +1,5 @@
+import re
+
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -21,12 +23,23 @@ def read_all_CSV(path):
 def read_CSV(path):
     print(path)
 
+    #Fix separator errors
+    f = open(path, 'r')
+    lines = f.readlines()
+    f.close()
+
+    fw = open(path, 'w')
+    # Parse errors like "2,34" that occurs sometimes in motec csv
+    for line in lines:
+        line2 = re.sub('("[^",]+),([^"]+")', '\\1.\\2', line)
+        if line2 != line:
+            print("Fixed line: {}".format(line))
+        fw.write(line2)
+    fw.close()
+
     with open(path) as f:
         line = f.readlines()[11].split(',')[1].replace('"', '').strip().split(' ')[0:-1]
         lap_markers = np.array(line, dtype=float)
-        # Parse errors like "2,34" that occurs sometimes in motec csv
-        # for line in f.readlines():
-        #     re.sub('("[^",]+),([^"]+")', '\1.\2', line)
 
     if len(lap_markers) >= 20:
         ignore_rows = []
