@@ -23,17 +23,45 @@ def predict(input, predictor, hidden):
     predictor.eval()
 
     with torch.no_grad():
-        return predictor(input.to(device), hidden)
+        return predictor(input, hidden)
+
+
+def load_predictor(path, dev=None):
+    hidden_dim = 1024
+    layers = 1
+    input_dim = 26
+    seq_len = 10
+
+    predictor = LapPredictor(input_dim, hidden_dim, layers, seq_len)
+    predictor.eval()
+    if dev:
+        predictor.to(dev)
+    else:
+        predictor.to(get_device())
+
+    # If model is stored, continue the training
+    if os.path.isfile(path + 'model.pt'):
+        predictor.load_state_dict(torch.load(path + 'model.pt')['model_state_dict'])
+        print("Pre-trained model loaded")
+    else:
+        print("No pre-trained model found")
+
+    return predictor
+
+
+def load_scaler(path):
+    scaler = StandardScaler()
+    scaler_params = np.load(path + "scaler.npy", allow_pickle=True)
+    scaler.mean_ = scaler_params[0]
+    scaler.scale_ = scaler_params[1]
+    return scaler
 
 
 if __name__ == '__main__':
     run_id = '05'
     run_path = '/home/ezequiel/experiments/ML-ACC/' + run_id + '/'
 
-    scaler = StandardScaler()
-    scaler_params = np.load(run_path+"scaler.npy", allow_pickle=True)
-    scaler.mean_ = scaler_params[0]
-    scaler.scale_ = scaler_params[1]
+    scaler = load_scaler(run_path)
 
     print("Processing Motec CSVs:")
     # dfs = motec.read_all_CSV(sys.argv[0])
@@ -41,26 +69,12 @@ if __name__ == '__main__':
 
     dfs_scaled = [pd.DataFrame(scaler.transform(df.values), index=df.index, columns=df.columns) for df in dfs]
 
-    hidden_dim = 1024
-    layers = 1
-    input_dim = dfs[0].shape[1]
-    epochs = 10000
-    seq_len = 10
-
     device = get_device()
-    predictor = LapPredictor(input_dim, hidden_dim, layers, seq_len)
-    predictor.eval()
-    predictor.to(device)
 
-    # If model is stored, continue the training
-    if os.path.isfile(run_path+'model.pt'):
-        predictor.load_state_dict(torch.load(run_path + '/model.pt')['model_state_dict'])
-        print("Pre-trained model loaded")
-    else:
-        print("No pre-trained model found")
+    predictor = load_predictor(run_path, device)
 
     for df in dfs_scaled:
-        hidden = init_hidden(layers, hidden_dim, device)
+        hidden = init_hidden(1, 1024, device)
 
         input = torch.tensor(df.iloc[0:10].values, dtype=torch.float)
         input = torch.reshape(input, (1, input.shape[0], input.shape[1]))
