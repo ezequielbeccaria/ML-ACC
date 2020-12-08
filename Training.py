@@ -59,22 +59,17 @@ def init_hidden(layers, hidden_dim, device):
     return hidden
 
 
-def generate_training_test_sets(dfs, seq_len):
+def generate_training_test_sets(dfs):
     inputs = []
-    targets = []
 
     for df in dfs:
-        seq_len = min(seq_len, df.shape[0] - 1)
-        for i in range(seq_len, len(df.index) - seq_len):
-            input, target = df[i - seq_len:i], df[i:i + seq_len]
-            inputs.append(torch.tensor(input.values, dtype=torch.float))
-            targets.append(torch.tensor(target.values, dtype=torch.float))
+        inputs.append(torch.tensor(df.values, dtype=torch.float))
 
     # slip training-test
-    X_train, X_test, y_train, y_test = train_test_split(inputs, targets, test_size=0.1, random_state=42)
+    train, test = train_test_split(inputs, test_size=0.1)
 
-    training_set = MotecDataSet(X_train, y_train)
-    test_set = MotecDataSet(X_test, y_test)
+    training_set = MotecDataSet(train)
+    test_set = MotecDataSet(test)
 
     return training_set, test_set
 
@@ -91,20 +86,28 @@ def scale_data(dfs):
     return [pd.DataFrame(scaler.transform(df.values), index=df.index, columns=df.columns) for df in dfs]
 
 
-def train(train_dataset, test_dataset, epochs, optimizer):
+def train(train_dataset, test_dataset, epochs, optimizer, seq_len):
     dataset_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=0)
     iteration = 0
     for e in range(epochs):
         train_loss = []
-        for i, (input, target) in enumerate(dataset_loader):
+        for i, tensor in enumerate(dataset_loader):
             hidden = init_hidden(layers, hidden_dim, device)
+            seq_len = 10
+            input, target = tensor[0, 0:seq_len], tensor[0, :30]
+            input = torch.reshape(input, (1, input.size()[0], input.size()[1]))
 
             optimizer.zero_grad()
-            out, hidden = predictor(input.to(device), hidden)
-            loss = loss_fn(out, target.squeeze().to(device))
+            out1, hidden = predictor(input.to(device), hidden)
+            input2 = torch.reshape(out1.detach(), (1, out1.shape[0], out1.shape[1]))
+            out2, hidden = predictor(input2.to(device), hidden)
+            out = torch.cat((out1, out2), dim=0)
+            target_loss = target[10:30].squeeze().to(device)
+            loss = loss_fn(out[:target_loss.size()[0]], target_loss)
             loss.backward()
             optimizer.step()
             train_loss.append(loss.item())
+
             writer.add_scalar('Training/Iteration Loss', float(loss.item()), iteration)
             iteration += 1
 
@@ -128,10 +131,12 @@ def test(dataset, epoch, predictor):
     dataset_loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
 
     test_loss = []
-    for i, (input, target) in enumerate(dataset_loader):
+    for i, tensor in enumerate(dataset_loader):
         with torch.no_grad():
             hidden = init_hidden(layers, hidden_dim, device)
-
+            seq_len = tensor.size()[1]
+            input, target = tensor[0, 0:seq_len], tensor[0, 0: seq_len + 1]
+            input = torch.reshape(input, (1, input.size()[0], input.size()[1]))
             out, hidden = predictor(input.to(device), hidden)
             loss = loss_fn(out, target.squeeze().to(device))
             test_loss.append(loss.item())
@@ -142,14 +147,14 @@ def test(dataset, epoch, predictor):
 
 
 if __name__ == '__main__':
-    run_id = '07'
+    run_id = '11'
     run_path = '/home/ezequiel/experiments/ML-ACC/'+run_id+'/'
 
     if not os.path.isdir(run_path):
         os.mkdir(run_path)
 
     print("Processing Motec CSVs:")
-    dfs = motec.read_all_CSV('./motec_files/')
+    dfs, _ = motec.read_all_CSV('./motec_files/')
     # dfs = motec.read_all_CSV('./motec_files_test/')
     dfs = scale_data(dfs)
 
@@ -177,7 +182,7 @@ if __name__ == '__main__':
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(predictor.parameters(), lr=1e-6)
 
-    training_dataset, testing_dataset = generate_training_test_sets(dfs, seq_len)
+    training_dataset, testing_dataset = generate_training_test_sets(dfs)
 
-    train(training_dataset, testing_dataset, epochs, optimizer)
+    train(training_dataset, testing_dataset, epochs, optimizer, seq_len)
     print("Training finished")

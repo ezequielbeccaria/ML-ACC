@@ -10,15 +10,6 @@ from sklearn.preprocessing import StandardScaler
 import motec_preprocess as motec
 from Training import LapPredictor, init_hidden
 
-
-def get_device():
-    if torch.cuda.is_available():
-        device = 'cuda:0'
-    else:
-        device = 'cpu'
-    return device
-
-
 def predict(input, predictor, hidden):
     predictor.eval()
 
@@ -26,18 +17,14 @@ def predict(input, predictor, hidden):
         return predictor(input, hidden)
 
 
-def load_predictor(path, dev=None):
+def load_predictor(path):
     hidden_dim = 1024
     layers = 1
     input_dim = 26
     seq_len = 10
 
     predictor = LapPredictor(input_dim, hidden_dim, layers, seq_len)
-    predictor.eval()
-    if dev:
-        predictor.to(dev)
-    else:
-        predictor.to(get_device())
+    predictor.to('cpu')
 
     # If model is stored, continue the training
     if os.path.isfile(path + 'model.pt'):
@@ -58,20 +45,20 @@ def load_scaler(path):
 
 
 if __name__ == '__main__':
-    run_id = '05'
+    run_id = '11'
     run_path = '/home/ezequiel/experiments/ML-ACC/' + run_id + '/'
 
     scaler = load_scaler(run_path)
 
     print("Processing Motec CSVs:")
     # dfs = motec.read_all_CSV(sys.argv[0])
-    dfs = motec.read_all_CSV('./motec_files_test/')
+    dfs, _ = motec.read_all_CSV('./motec_files/')
 
     dfs_scaled = [pd.DataFrame(scaler.transform(df.values), index=df.index, columns=df.columns) for df in dfs]
 
-    device = get_device()
+    device = 'cpu'
 
-    predictor = load_predictor(run_path, device)
+    predictor = load_predictor(run_path)
 
     for df in dfs_scaled:
         hidden = init_hidden(1, 1024, device)
@@ -81,7 +68,6 @@ if __name__ == '__main__':
         input.to(device)
 
         out1, hidden = predict(input, predictor, hidden)
-
         input = torch.reshape(out1, (1, out1.shape[0], out1.shape[1]))
         out2, hidden = predict(input, predictor, hidden)
 
@@ -91,7 +77,9 @@ if __name__ == '__main__':
         out = torch.cat((out1, out2), dim=0)
         out_np = out.cpu().numpy()
         out_np = scaler.inverse_transform(out_np)
-        plt.plot(np.arange(10, 30), out_np[:, -1], label='prediction')
+        out_np = np.concatenate((target[0:10, :], out_np), axis=0)
+        # out_np = np.concatenate((target[0:10, :], out_np[10:, :]), axis=0)
+        plt.plot(out_np[:, -1], label='prediction')
 
         plt.legend()
         plt.show()

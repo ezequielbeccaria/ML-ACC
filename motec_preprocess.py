@@ -17,7 +17,7 @@ def read_all_CSV(path):
         df = read_CSV(f)
         if df is not None:
             dfs.append(df)
-    return dfs
+    return dfs, csv_files
 
 
 def read_CSV(path):
@@ -95,14 +95,12 @@ def print_ts(df):
     plt.show()
 
 
-
 if __name__ == '__main__':
-    # df = read_CSV('./motec_files/nurburgring-porsche_991ii_gt3_r-11-2020.06.27-22.03.49.csv')
-    # df = read_CSV('./motec_files/Laguna_Seca-porsche_991ii_gt3_r-0-2020.07.03-00.17.08.csv')
-    # df = read_CSV('./motec_files/Laguna_Seca-porsche_991ii_gt3_r-15-2020.07.03-00.03.51.csv')
-    # df_input = df[0:10]
-    # df_output = df[-1:len(df.index)]
-    # print_ts(df)
-
     path = './motec_files/'
-    print(read_all_CSV(path))
+    dfs, files = read_all_CSV(path)
+
+    for df, f in zip(dfs, files):
+        plt.plot(df.values[:, -1], label='original')
+        plt.title(f)
+        plt.legend()
+        plt.show()
