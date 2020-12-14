@@ -147,15 +147,17 @@ def test(dataset, epoch, predictor):
 
 
 if __name__ == '__main__':
-    run_id = '11'
-    run_path = '/home/ezequiel/experiments/ML-ACC/'+run_id+'/'
-
+    # run_id = '12'
+    # run_path = '/home/ezequiel/experiments/ML-ACC/'+run_id+'/'
+    run_path = sys.argv[1]
+    print('Working path: {}'.format(run_path))
     if not os.path.isdir(run_path):
         os.mkdir(run_path)
 
     print("Processing Motec CSVs:")
-    dfs, _ = motec.read_all_CSV('./motec_files/')
-    # dfs = motec.read_all_CSV('./motec_files_test/')
+    # dfs, _ = motec.read_all_CSV('./motec_files/')
+    print('Dataset path: {}'.format(sys.argv[2]))
+    dfs, _ = motec.read_all_CSV(sys.argv[2])
     dfs = scale_data(dfs)
 
     writer = SummaryWriter(run_path, flush_secs=30)

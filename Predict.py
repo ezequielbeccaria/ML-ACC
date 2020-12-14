@@ -46,13 +46,14 @@ def load_scaler(path):
 
 if __name__ == '__main__':
     run_id = '11'
-    run_path = '/home/ezequiel/experiments/ML-ACC/' + run_id + '/'
+    # run_path = '/home/ezequiel/experiments/ML-ACC/' + run_id + '/'
+    run_path = sys.argv[1]
 
     scaler = load_scaler(run_path)
 
     print("Processing Motec CSVs:")
-    # dfs = motec.read_all_CSV(sys.argv[0])
-    dfs, _ = motec.read_all_CSV('./motec_files/')
+    dfs, _ = motec.read_all_CSV(sys.argv[2])
+    # dfs, _ = motec.read_all_CSV('./motec_files/')
 
     dfs_scaled = [pd.DataFrame(scaler.transform(df.values), index=df.index, columns=df.columns) for df in dfs]
 
