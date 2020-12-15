@@ -12,3 +12,5 @@ To train the predictor:
 To predict:
 
 `python Predict.py [workpath] [dataset path]`
+
+To Train/Predict, export data from MoteC files as CSV with "include distance" option activated.
